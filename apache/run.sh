@@ -10,6 +10,5 @@ sed -i "s/export APACHE_RUN_GROUP=www-data/export APACHE_RUN_GROUP=staff/" /etc/
     groupmod -g ${DOCKER_USER_GID} staff
    # Tweaks to give Apache/PHP write permissions to the app
     chown -R www-data:staff /var/www
-    chown -R www-data:staff /app
 
 exec supervisord -n
