@@ -7,7 +7,7 @@ ENV DOCKER_USER_GID 20
 ENV BOOT2DOCKER_ID 1000
 ENV BOOT2DOCKER_GID 50
 
-# Tweaks to give Apache/PHP write permissions to the app
+# Tweaks to give node write permissions to the app
 RUN usermod -u ${BOOT2DOCKER_ID} www-data && \
     usermod -G staff www-data
 
@@ -17,20 +17,26 @@ RUN groupmod -g ${BOOT2DOCKER_GID} staff
 # Install packages
 ENV DEBIAN_FRONTEND noninteractive
 RUN \
+  apt-get update && \
+  apt-get install wget
+# Install Node & NPM
+RUN \
   cd /tmp && \
-  wget http://nodejs.org/dist/node-latest.tar.gz && \
-  tar xvzf node-latest.tar.gz && \
-  rm -f node-latest.tar.gz && \
-  cd node-v* && \
-  ./configure && \
-  CXX="g++ -Wno-unused-local-typedefs" make && \
-  CXX="g++ -Wno-unused-local-typedefs" make install && \
-  cd /tmp && \
-  rm -rf /tmp/node-v* && \
-  npm install -g npm && \
-  printf '\n# Node.js\nexport PATH="node_modules/.bin:$PATH"' >> /root/.bashrc
-# Add volumes for the app and MySql
-VOLUME  "/var/www" "/var/logs"
+  wget https://nodejs.org/dist/v0.12.7/node-v0.12.7-linux-x64.tar.gz && \
+  tar -C /usr/local --strip-components 1 -xzf node-v0.12.7-linux-x64.tar.gz && \
+  ls -l /usr/local/bin/node && \
+  ls -l /usr/local/bin/npm
 
-EXPOSE 80
+#Install PM2 https://github.com/Unitech/pm2
+RUN npm install pm2 -g
+
+#ajoute les fichiers
+ADD run.sh /run.sh
+ADD server /server
+ADD environment /environment
+
+
+VOLUME  "/server" "/environment" "/var/logs"
+
+EXPOSE 8000
 CMD ["/run.sh"]
