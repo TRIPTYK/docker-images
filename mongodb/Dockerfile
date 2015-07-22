@@ -1,44 +1,44 @@
-FROM phusion/baseimage:latest
-MAINTAINER The Crazy Digital Painter <gilles@triptyk.eu>
+FROM phusion/baseimage:0.9.16
 
-ENV DOCKER_USER_ID 501
-ENV DOCKER_USER_GID 20
+# add our user and group first to make sure their IDs get assigned consistently, regardless of whatever dependencies get added
+RUN groupadd -r mongodb && useradd -r -g mongodb mongodb
 
-ENV BOOT2DOCKER_ID 1000
-ENV BOOT2DOCKER_GID 50
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends \
+		ca-certificates curl \
+		numactl \
+	&& rm -rf /var/lib/apt/lists/*
 
-# Tweaks to give node write permissions to the app
-RUN usermod -u ${BOOT2DOCKER_ID} www-data && \
-    usermod -G staff www-data
+# grab gosu for easy step-down from root
+RUN gpg --keyserver ha.pool.sks-keyservers.net --recv-keys B42F6819007F00F88E364FD4036A9C25BF357DD4
+RUN curl -o /usr/local/bin/gosu -SL "https://github.com/tianon/gosu/releases/download/1.2/gosu-$(dpkg --print-architecture)" \
+	&& curl -o /usr/local/bin/gosu.asc -SL "https://github.com/tianon/gosu/releases/download/1.2/gosu-$(dpkg --print-architecture).asc" \
+	&& gpg --verify /usr/local/bin/gosu.asc \
+	&& rm /usr/local/bin/gosu.asc \
+	&& chmod +x /usr/local/bin/gosu
 
-RUN groupmod -g $(($BOOT2DOCKER_GID + 10000)) $(getent group $BOOT2DOCKER_GID | cut -d: -f1)
-RUN groupmod -g ${BOOT2DOCKER_GID} staff
+# gpg: key 7F0CEB10: public key "Richard Kreuter <richard@10gen.com>" imported
+RUN apt-key adv --keyserver ha.pool.sks-keyservers.net --recv-keys 492EAFE8CD016A07919F1D2B9ECBEC467F0CEB10
 
-# Install packages
-ENV DEBIAN_FRONTEND noninteractive
+ENV MONGO_MAJOR 3.0
+ENV MONGO_VERSION 3.0.2
 
-RUN \
-  apt-get update && \
-  apt-get install wget
+RUN echo "deb http://repo.mongodb.org/apt/debian wheezy/mongodb-org/$MONGO_MAJOR main" > /etc/apt/sources.list.d/mongodb-org.list
 
-# Install Node & NPM
-# RUN \
-  # cd /tmp && \
-  # wget https://nodejs.org/dist/v0.12.7/node-v0.12.7-linux-x64.tar.gz && \
-  # tar -C /usr/local --strip-components 1 -xzf node-v0.12.7-linux-x64.tar.gz && \
-  # ls -l /usr/local/bin/node && \
-  # ls -l /usr/local/bin/npm
+RUN set -x \
+	&& apt-get update \
+	&& apt-get install -y mongodb-org=$MONGO_VERSION \
+	&& rm -rf /var/lib/apt/lists/* \
+	&& rm -rf /var/lib/mongodb
 
-#Install PM2 https://github.com/Unitech/pm2
-# RUN npm install pm2 -g
+RUN mkdir -p /var/data && chown -R mongodb:mongodb /var/data
 
-#ajoute les fichiers
-ADD run.sh /run.sh
+RUN mkdir               /etc/service/mongodb
+ADD environment/mongo/mongodb.sh    /etc/service/mongodb/run
+RUN chmod +x            /etc/service/mongodb/run
 
-ADD environment /environment
+EXPOSE 27017
 
+VOLUME ["/var/config", "/var/data"]
 
-VOLUME  "/db" "/environment" "/var/logs"
-
-EXPOSE 8000
-CMD ["/run.sh"]
+CMD ["/sbin/my_init"]

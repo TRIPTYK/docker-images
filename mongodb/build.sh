@@ -1,2 +1,2 @@
 #!/bin/bash
-docker build -t triptyk/node .
+docker build -t triptyk/mongodb .
