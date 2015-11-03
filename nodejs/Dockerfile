@@ -18,25 +18,24 @@ RUN groupmod -g ${BOOT2DOCKER_GID} staff
 ENV DEBIAN_FRONTEND noninteractive
 RUN \
   apt-get update && \
-  apt-get install wget
+  apt-get upgrade -y
 # Install Node & NPM
+
 RUN \
-  cd /tmp && \
-  wget https://nodejs.org/dist/v0.12.7/node-v0.12.7-linux-x64.tar.gz && \
-  tar -C /usr/local --strip-components 1 -xzf node-v0.12.7-linux-x64.tar.gz && \
-  ls -l /usr/local/bin/node && \
-  ls -l /usr/local/bin/npm
+#
+curl -sL https://deb.nodesource.com/setup_4.x | sudo -E bash - &&\
+apt-get install -y nodejs
 
-#Install PM2 https://github.com/Unitech/pm2
+# #Install PM2 https://github.com/Unitech/pm2
 RUN npm install pm2 -g
-
-#ajoute les fichiers
+#
+# #ajoute les fichiers
 ADD run.sh /run.sh
 ADD server /server
 ADD environment /environment
-
-
+#
+#
 VOLUME  "/server" "/environment" "/var/logs"
-
-EXPOSE 8000
+#
+EXPOSE 7000-10000
 CMD ["/run.sh"]
